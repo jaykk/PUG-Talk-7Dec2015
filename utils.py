@@ -1,14 +1,14 @@
 import numpy as np
 
+
 def showimg(fname):
     import matplotlib.pyplot as plt
     from scipy.misc import imread
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
+    fig, ax = plt.subplots(1,1,figsize=(12,12))
     ax.set_frame_on(False)
     ax.axes.get_yaxis().set_visible(False)
     ax.axes.get_xaxis().set_visible(False)
-    return plt.imshow(imread(fname))
+    plt.imshow(imread(fname))
 
 def add_rect(pic):
     """ Add a red triangle over a 3 channel numpy array """
@@ -46,3 +46,36 @@ def add_circle(pic):
     p[mask,:] = 0
     p[mask,0] = 255
     return p
+
+def load(data_len, standarize = True, shrink = True, seed = 48):
+    import pandas as pd
+    from scipy.misc import imread, imsave, imresize
+    from sklearn.preprocessing import StandardScaler
+    np.random.seed(seed)
+    img_fnames = pd.read_csv("./lfw_files.txt").values.ravel()
+    Xb = []
+    yb = []
+
+    for i in range(data_len):
+        image = imread(np.random.choice(img_fnames))
+        if shrink:
+            size_x = 48
+            size_y = 48
+        else:
+            size_x = image.shape[0]
+            size_y = image.shape[1]
+        if np.random.random() > 0.5:
+            Xb.append(imresize(add_rect(image), (size_x,size_y,3)).swapaxes(0,2).swapaxes(1,2))
+            yb.append(0)
+        else:
+            Xb.append(imresize(add_circle(image), (size_x,size_y,3)).swapaxes(0,2).swapaxes(1,2))
+            yb.append(1)
+    Xb = np.array(Xb)
+    if standarize:
+        Xb = np.array(Xb, np.float32)
+        n,c,x,y = Xb.shape
+        Xb = Xb.reshape((n,x*y*c))
+        sc = StandardScaler(with_mean=True, with_std=True)
+        Xb = sc.fit_transform(Xb)
+        Xb = Xb.reshape((n,c,x,y))
+    return Xb, np.array(yb, dtype=np.int32)
